@@ -24,6 +24,7 @@ class App:
         self.e_pos = []
         self.p_pos = None
         self.load()
+        self.time = 0
         self.player = Player(self, vec(self.p_pos))
         self.make_enemies()
         self.get_input = get_input
@@ -35,6 +36,7 @@ class App:
         self.running = True
         while self.running:
             dt = .1
+            self.time += dt
             self.playing_events()
             self.playing_update(dt)
             self.playing_draw()
@@ -90,6 +92,7 @@ class App:
         #                                                        coin.y*self.cell_height, self.cell_width, self.cell_height))
 
     def reset(self):
+        self.time = 0
         self.player.lives = 3
         self.player.current_score = 0
         self.player.grid_pos = vec(self.player.starting_pos)
