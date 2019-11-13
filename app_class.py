@@ -34,8 +34,7 @@ class App:
         self.reset()
         self.running = True
         while self.running:
-            dt = self.clock.tick(FPS)
-            print('tick playing: ' + str(dt))
+            dt = .1
             self.playing_events()
             self.playing_update(dt)
             self.playing_draw()

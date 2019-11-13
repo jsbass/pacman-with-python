@@ -13,7 +13,7 @@ class Player:
         self.stored_direction = None
         self.able_to_move = True
         self.current_score = 0
-        self.speed = 5 #px per second
+        self.speed = 20 #px per second
         self.lives = 1
 
     def update(self, dt):

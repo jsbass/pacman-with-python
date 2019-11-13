@@ -38,9 +38,9 @@ class Enemy:
 
     def set_speed(self):
         if self.personality in ["speedy", "scared"]:
-            speed = 2
+            speed = 20
         else:
-            speed = 1
+            speed = 10
         return speed
 
     def set_target(self):
