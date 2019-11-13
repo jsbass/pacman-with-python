@@ -19,10 +19,10 @@ class Enemy:
         self.target = None
         self.speed = self.set_speed()
 
-    def update(self):
+    def update(self, dt):
         self.target = self.set_target()
         if self.target != self.grid_pos:
-            self.pix_pos += self.direction * self.speed
+            self.pix_pos += self.direction * self.speed * dt
             if self.time_to_move():
                 self.move()
 
@@ -38,9 +38,9 @@ class Enemy:
 
     def set_speed(self):
         if self.personality in ["speedy", "scared"]:
-            speed = 2
+            speed = 20
         else:
-            speed = 1
+            speed = 10
         return speed
 
     def set_target(self):
