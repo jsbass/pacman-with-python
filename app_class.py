@@ -1,47 +1,62 @@
 import pygame
 import sys
 import copy
-from settings import *
+import math
 from player_class import *
 from enemy_class import *
 from inputs import Inputs
 
-
-pygame.init()
 vec = pygame.math.Vector2
-
 
 class App:
     def __init__(self, get_input):
+        pygame.init()
+        self.gameStateArray = [1]*(287+2+2*(4)) # coins state, player pos, enemy pos = 297
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
         self.running = False
+        self.player = None
         self.cell_width = MAZE_WIDTH//COLS
         self.cell_height = MAZE_HEIGHT//ROWS
         self.walls = []
         self.coins = []
+        self.coinsStart = []
         self.enemies = []
-        self.e_pos = []
-        self.p_pos = None
-        self.load()
         self.time = 0
-        self.player = Player(self, vec(self.p_pos))
-        self.make_enemies()
         self.get_input = get_input
+        self.input = Inputs.NONE
+        self.load()
+        self.reset()
+    
+    # possibly get rid of this and store the functioning game state as this kind of array
+    def getGameState(self):
+        return self.gameStateArray
 
     # run then return back for analysis 
     def run(self):
         print('starting')
         self.reset()
         self.running = True
+        count = 0
+        quitReturn = False #tracks whether the game was quit manually
         while self.running:
+            # alternate these between real time and fixed interval
+            # dt = self.clock.tick(60) / 1000
             dt = .1
             self.time += dt
             self.playing_events()
             self.playing_update(dt)
-            self.playing_draw()
+            if(count == 0):
+                self.playing_draw()
+            count = (count + 1) % 5
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+                    quitReturn = True
+            
         print('done playing')
         pygame.quit()
+        return quitReturn
 
 ############################ HELPER FUNCTIONS ##################################
 
@@ -58,27 +73,22 @@ class App:
         self.background = pygame.image.load('maze.png')
         self.background = pygame.transform.scale(self.background, (MAZE_WIDTH, MAZE_HEIGHT))
 
-        # Opening walls file
-        # Creating walls list with co-ords of walls
-        # stored as  a vector
         with open("walls.txt", 'r') as file:
+            coinCount = 0
             for yidx, line in enumerate(file):
                 for xidx, char in enumerate(line):
                     if char == "1":
                         self.walls.append(vec(xidx, yidx))
                     elif char == "C":
-                        self.coins.append(vec(xidx, yidx))
+                        coinCount += 1
+                        self.coinsStart.append((coinCount, vec(xidx, yidx)))
                     elif char == "P":
-                        self.p_pos = [xidx, yidx]
+                        self.player = Player(self, vec(xidx, yidx))
                     elif char in ["2", "3", "4", "5"]:
-                        self.e_pos.append([xidx, yidx])
+                        self.enemies.append(Enemy(self, vec(xidx, yidx), int(char)-2))
                     elif char == "B":
                         pygame.draw.rect(self.background, BLACK, (xidx*self.cell_width, yidx*self.cell_height,
                                                                   self.cell_width, self.cell_height))
-
-    def make_enemies(self):
-        for idx, pos in enumerate(self.e_pos):
-            self.enemies.append(Enemy(self, vec(pos), idx))
 
     def draw_grid(self):
         for x in range(WIDTH//self.cell_width):
@@ -87,9 +97,6 @@ class App:
         for x in range(HEIGHT//self.cell_height):
             pygame.draw.line(self.background, GREY, (0, x*self.cell_height),
                              (WIDTH, x*self.cell_height))
-        # for coin in self.coins:
-        #     pygame.draw.rect(self.background, (167, 179, 34), (coin.x*self.cell_width,
-        #                                                        coin.y*self.cell_height, self.cell_width, self.cell_height))
 
     def reset(self):
         self.time = 0
@@ -98,17 +105,21 @@ class App:
         self.player.grid_pos = vec(self.player.starting_pos)
         self.player.pix_pos = self.player.get_pix_pos()
         self.player.direction *= 0
+        
+        self.gameStateArray = self.gameStateArray = [1]*(287+2+2*(4)) # coins state, player pos, enemy pos = 297
         for enemy in self.enemies:
             enemy.grid_pos = vec(enemy.starting_pos)
             enemy.pix_pos = enemy.get_pix_pos()
             enemy.direction *= 0
 
-        self.coins = []
-        with open("walls.txt", 'r') as file:
-            for yidx, line in enumerate(file):
-                for xidx, char in enumerate(line):
-                    if char == 'C':
-                        self.coins.append(vec(xidx, yidx))
+        self.coins = copy.deepcopy(self.coinsStart)
+        self.gameStateArray = [1]*(287+2+2*(4))
+        self.gameStateArray[287] = self.player.grid_pos.x
+        self.gameStateArray[288] = self.player.grid_pos.y
+
+        for i, enemy in enumerate(self.enemies):
+            self.gameStateArray[288+2*i] = enemy.grid_pos.x
+            self.gameStateArray[288+2*i+1] = enemy.grid_pos.y
 
 ########################### PLAYING FUNCTIONS ##################################
 
@@ -116,21 +127,39 @@ class App:
         event = self.get_input(self)
         if event == Inputs.QUIT:
             self.running = False
-        elif event == Inputs.LEFT:
-            self.player.move(vec(-1, 0))
-        elif event == Inputs.RIGHT:
-            self.player.move(vec(1, 0))
-        elif event == Inputs.UP:
-            self.player.move(vec(0, -1))
-        elif event == Inputs.DOWN:
-            self.player.move(vec(0, 1))
+        else:
+            self.input = event
 
     def playing_update(self, dt):
-        self.player.update(dt)
-        for enemy in self.enemies:
-            enemy.update(dt)
+        if self.input == Inputs.LEFT:
+            self.player.move(vec(-1, 0))
+        elif self.input == Inputs.RIGHT:
+            self.player.move(vec(1, 0))
+        elif self.input == Inputs.UP:
+            self.player.move(vec(0, -1))
+        elif self.input == Inputs.DOWN:
+            self.player.move(vec(0, 1))
 
-        for enemy in self.enemies:
+        self.player.update(dt)
+        self.gameStateArray[287] = self.player.grid_pos.x
+        self.gameStateArray[288] = self.player.grid_pos.y
+
+        coinRemovalIndices = []
+        for i, coin in enumerate(self.coins):
+            if(self.player.grid_pos == coin):
+                print(coin)
+            if(self.player.grid_pos == coin[1]):
+                coinRemovalIndices.append(i)
+
+        for index in coinRemovalIndices:
+            coin = self.coins.pop(index)
+            self.player.current_score += 1
+            self.gameStateArray[coin[0]] = 0
+
+        for i, enemy in enumerate(self.enemies):
+            enemy.update(dt)
+            self.gameStateArray[288+2*i] = enemy.grid_pos.x
+            self.gameStateArray[288+2*i+1] = enemy.grid_pos.y
             if enemy.grid_pos == self.player.grid_pos:
                 self.remove_life()
 
@@ -140,8 +169,9 @@ class App:
         self.draw_coins()
         # self.draw_grid()
         self.draw_text('CURRENT SCORE: {}'.format(self.player.current_score),
-                       self.screen, [60, 0], 18, WHITE, START_FONT)
-        self.draw_text('HIGH SCORE: 0', self.screen, [WIDTH//2+60, 0], 18, WHITE, START_FONT)
+                       self.screen, [15, 0], 15, WHITE, START_FONT)
+        self.draw_text('TIME: {}'.format(math.floor(self.time)), self.screen, [250, 0], 15, WHITE, START_FONT)
+        self.draw_text('DECISION: {}'.format(self.input.name), self.screen, [250+150, 0], 15, WHITE, START_FONT)
         self.player.draw()
         for enemy in self.enemies:
             enemy.draw()
@@ -163,5 +193,5 @@ class App:
     def draw_coins(self):
         for coin in self.coins:
             pygame.draw.circle(self.screen, (124, 123, 7),
-                               (int(coin.x*self.cell_width)+self.cell_width//2+TOP_BOTTOM_BUFFER//2,
-                                int(coin.y*self.cell_height)+self.cell_height//2+TOP_BOTTOM_BUFFER//2), 5)
+                               (int(coin[1].x*self.cell_width)+self.cell_width//2+TOP_BOTTOM_BUFFER//2,
+                                int(coin[1].y*self.cell_height)+self.cell_height//2+TOP_BOTTOM_BUFFER//2), 5)

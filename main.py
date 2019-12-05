@@ -1,13 +1,11 @@
 import pygame
-from app_class import *
+from app_class import App
+from inputs import Inputs
+from generation_class import Generation
+import os
 
-def Player:
-    WEIGHTS1 = []; # 258x8
-    WEIGHTS2 = []; # 8x4
+class ManualPlayer:
     def get_input(self, app):
-        # get model input from app state
-        # calculate player's output using weights
-        # return output based on neural net output
         print('getting input')
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -22,12 +20,43 @@ def Player:
                 if event.key == pygame.K_DOWN:
                     return Inputs.DOWN
 
-    return Inputs.NONE
+        return Inputs.NONE
 
-def GenerationHandler:
-    generations = [];
-    def createGeneration(self, prevGen):
-        return ['newplayer1', 'newplayer2']
+def main():
+    if not os.path.exists('data'):
+        os.makedirs('data')
 
-    def play(play)
+    if os.path.exists('data/generations.csv'):
+        os.remove('data/generations.csv')
+    
+    with open('data/generations.csv', 'w') as generationsFile:
+        generation = Generation.generateWithRandomIndividuals()
+        for i in range(100):
+            print('starting scoring for individuals in generation ' + str(i))
+            fileName = 'data/generation-' + str(i) + '.csv'
+            if os.path.exists(fileName):
+                os.remove(fileName)
+            
+            with open(fileName, 'w') as generationFile:
+                for individual in generation.individuals:
+                    print('scoring next individual')
+                    app = App(individual.decide)
+                    didQuit = app.run()
+
+                    if didQuit:
+                        print('runs stopped manually not continuing')
+                        return
+
+                    individual.gameScore = app.player.current_score
+                    individual.gameTime = app.time
+                    individual.gameScore = 1234
+                    individual.gameTime = 5678
+
+                    print(str(individual), file = generationFile)
+        
+            print(str(generation), file = generationsFile)
+            generation = generation.generateNext()
+        
+
 if __name__ == '__main__':
+    main()

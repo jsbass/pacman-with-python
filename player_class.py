@@ -13,12 +13,12 @@ class Player:
         self.stored_direction = None
         self.able_to_move = True
         self.current_score = 0
-        self.speed = 20 #px per second
+        self.speed = 2 #cells per second
         self.lives = 1
 
     def update(self, dt):
         if self.able_to_move:
-            self.pix_pos += self.direction*self.speed*dt
+            self.pix_pos += vec(self.direction.x * self.app.cell_width, self.direction.y * self.app.cell_height)*self.speed*dt
         if self.time_to_move():
             if self.stored_direction != None:
                 self.direction = self.stored_direction
@@ -28,8 +28,6 @@ class Player:
                             self.app.cell_width//2)//self.app.cell_width+1
         self.grid_pos[1] = (self.pix_pos[1]-TOP_BOTTOM_BUFFER +
                             self.app.cell_height//2)//self.app.cell_height+1
-        if self.on_coin():
-            self.eat_coin()
 
     def draw(self):
         pygame.draw.circle(self.app.screen, PLAYER_COLOUR, (int(self.pix_pos.x),
@@ -44,7 +42,7 @@ class Player:
         #                                         self.grid_pos[1]*self.app.cell_height+TOP_BOTTOM_BUFFER//2, self.app.cell_width, self.app.cell_height), 1)
 
     def on_coin(self):
-        if self.grid_pos in self.app.coins:
+        if self.grid_pos in map(lambda c : c[1], self.app.coins):
             if int(self.pix_pos.x+TOP_BOTTOM_BUFFER//2) % self.app.cell_width == 0:
                 if self.direction == vec(1, 0) or self.direction == vec(-1, 0):
                     return True
@@ -52,10 +50,6 @@ class Player:
                 if self.direction == vec(0, 1) or self.direction == vec(0, -1):
                     return True
         return False
-
-    def eat_coin(self):
-        self.app.coins.remove(self.grid_pos)
-        self.current_score += 1
 
     def move(self, direction):
         self.stored_direction = direction

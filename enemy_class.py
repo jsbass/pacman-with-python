@@ -4,7 +4,7 @@ from settings import *
 
 vec = pygame.math.Vector2
 
-
+cellsPerSecond = 1
 class Enemy:
     def __init__(self, app, pos, number):
         self.app = app
@@ -22,7 +22,7 @@ class Enemy:
     def update(self, dt):
         self.target = self.set_target()
         if self.target != self.grid_pos:
-            self.pix_pos += self.direction * self.speed * dt
+            self.pix_pos += vec(self.direction.x * self.app.cell_width, self.direction.y * self.app.cell_height) * self.speed * dt
             if self.time_to_move():
                 self.move()
 
@@ -38,9 +38,9 @@ class Enemy:
 
     def set_speed(self):
         if self.personality in ["speedy", "scared"]:
-            speed = 20
+            speed = cellsPerSecond * 2
         else:
-            speed = 10
+            speed = cellsPerSecond
         return speed
 
     def set_target(self):
