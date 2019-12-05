@@ -1,8 +1,10 @@
 import pygame
-from app_class import App
-from inputs import Inputs
+from game.app_class import App
+from game.inputs import Inputs
 from generation_class import Generation
+from individual_class import Individual
 import os
+import sys
 
 class ManualPlayer:
     def get_input(self, app):
@@ -22,29 +24,48 @@ class ManualPlayer:
 
         return Inputs.NONE
 
-def main():
+def main(continueRun):
     if not os.path.exists('data'):
         os.makedirs('data')
 
+    generation = None
+    startNumber = 1
+    if continueRun:
+        with open('data/generations.csv', 'r') as generationsFile:
+            numLines = len(generationsFile.readlines())
+            startNumber = numLines
+            with open('data/generation-' + str(numLines) + '.csv', 'r') as generationFile:
+                individuals = []
+                for line in generationFile.readlines():
+                    if line == '':
+                        continue
+                    individuals.append(Individual.fromString(line))
+
+                generation = Generation(individuals)
+    else:
+        generation = Generation.generateWithRandomIndividuals()
+    
     if os.path.exists('data/generations.csv'):
         os.remove('data/generations.csv')
     
-    with open('data/generations.csv', 'w') as generationsFile:
-        generation = Generation.generateWithRandomIndividuals()
-        for i in range(100):
+    app = App(None)
+    with open('data/generations.csv', 'a+' if continueRun else 'w+') as generationsFile:
+        for i in range(startNumber, startNumber+100):
             print('starting scoring for individuals in generation ' + str(i))
             fileName = 'data/generation-' + str(i) + '.csv'
             if os.path.exists(fileName):
                 os.remove(fileName)
             
-            with open(fileName, 'w') as generationFile:
+            with open(fileName, 'w+') as generationFile:
                 for individual in generation.individuals:
                     print('scoring next individual')
-                    app = App(individual.decide)
+                    app.get_input = individual.decide
+                    app.reset()
                     didQuit = app.run()
 
                     if didQuit:
                         print('runs stopped manually not continuing')
+                        app.quit()
                         return
 
                     individual.gameScore = app.player.current_score
@@ -56,7 +77,5 @@ def main():
         
             print(str(generation), file = generationsFile)
             generation = generation.generateNext()
-        
 
-if __name__ == '__main__':
-    main()
+    app.quit()
