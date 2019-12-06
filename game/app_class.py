@@ -46,7 +46,6 @@ class App:
     # run then return back for analysis 
     def run(self):
         self.last_time = time.time()
-        print('starting', self.getTimeDiff())
         self.reset()
         self.running = True
         count = 0
@@ -54,24 +53,18 @@ class App:
         while self.running:
             # alternate these between real time and fixed interval
             # dt = self.clock.tick(60) / 1000
-            print('start loop', self.getTimeDiff())
             dt = .1
             self.time += dt
-            print('get input', self.getTimeDiff())
             self.playing_events()
-            print('update', self.getTimeDiff(), time.time())
             self.playing_update(dt)
             if(count == 0):
-                print('draw', self.getTimeDiff())
                 self.playing_draw()
             count = (count + 1) % 5
-            print('purge events', self.getTimeDiff(), time.time())
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
                     quitReturn = True
             
-        print('done playing', self.getTimeDiff())
         return quitReturn
 
 ############################ HELPER FUNCTIONS ##################################
@@ -116,10 +109,6 @@ class App:
                         self.walls.append(vec(xidx, yidx))
                         pygame.draw.rect(self.background, BLACK, (xidx*self.cell_width, yidx*self.cell_height,
                                                                   self.cell_width, self.cell_height))
-
-        print('player location', self.player.grid_pos)
-        print('pen exit', self.pen_exit_target)
-        print('pen walls', self.pen_walls)
 
     def draw_grid(self):
         for x in range(WIDTH//self.cell_width):
@@ -170,16 +159,12 @@ class App:
             self.player.move(vec(0, -1))
         elif self.input == Inputs.DOWN:
             self.player.move(vec(0, 1))
-        print('player update', self.getTimeDiff())
         self.player.update(dt)
         self.gameStateArray[287] = self.player.grid_pos.x
         self.gameStateArray[288] = self.player.grid_pos.y
 
-        print('coin checking', self.getTimeDiff())
         coinRemovalIndices = []
         for i, coin in enumerate(self.coins):
-            if(self.player.grid_pos == coin):
-                print(coin)
             if(self.player.grid_pos == coin[1]):
                 coinRemovalIndices.append(i)
 
@@ -188,14 +173,10 @@ class App:
             self.player.current_score += 1
             self.gameStateArray[coin[0]] = 0
 
-        print('enemy update', self.getTimeDiff())
         for i, enemy in enumerate(self.enemies):
-            print('update ' + str(i))
             enemy.update(dt)
             if enemy.grid_pos == self.player.grid_pos:
-                print('lost life', self.getTimeDiff())
                 self.remove_life()
-                print('done removing life', self.getTimeDiff())
                 break
 
             self.gameStateArray[288+2*i] = enemy.grid_pos.x
@@ -218,14 +199,11 @@ class App:
     def remove_life(self):
         self.player.lives -= 1
         if self.player.lives == 0:
-            print('game over', self.getTimeDiff())
             self.running = False
         else:
-            print('resetting player', self.getTimeDiff())
             self.player.grid_pos = vec(self.player.starting_pos)
             self.player.pix_pos = self.player.get_pix_pos()
             self.player.direction *= 0
-            print('resetting enemies', self.getTimeDiff())
             for enemy in self.enemies:
                 enemy.grid_pos = vec(enemy.starting_pos)
                 enemy.pix_pos = enemy.get_pix_pos()

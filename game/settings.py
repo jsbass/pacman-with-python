@@ -19,7 +19,7 @@ PLAYER_COLOUR = (190, 194, 15)
 # font settings
 START_TEXT_SIZE = 16
 START_FONT = 'arial black'
-
+DEBUG = False
 # player settings
 # PLAYER_START_POS = vec(2, 2)
 

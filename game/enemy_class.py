@@ -21,12 +21,11 @@ class Enemy:
 
     def update(self, dt):
         print('set target')
-        self.target = self.set_target()
+        self.target = self.set_target() 
         if self.target != self.grid_pos:
+            if self.can_change_direction():
+                self.pick_direction()
             self.pix_pos += vec(self.direction.x * self.app.cell_width, self.direction.y * self.app.cell_height) * self.speed * dt
-            if self.time_to_move():
-                print('move', self.personality)
-                self.move()
 
         # Setting grid position in reference to pix position
         self.grid_pos[0] = (self.pix_pos[0]-TOP_BOTTOM_BUFFER +
@@ -35,11 +34,15 @@ class Enemy:
                             self.app.cell_height//2)//self.app.cell_height+1
 
     def draw(self):
+        # line to target
         pygame.draw.line(self.app.screen, self.colour, self.pix_pos, (int(self.target.x*self.app.cell_width)+self.app.cell_width//2+TOP_BOTTOM_BUFFER//2,
                                 int(self.target.y*self.app.cell_height)+self.app.cell_height//2+TOP_BOTTOM_BUFFER//2))
+        # circle next square
         pygame.draw.circle(self.app.screen, self.colour,
-                           (int(self.direction.x*self.app.cell_width+self.app.cell_width//2+TOP_BOTTOM_BUFFER//2 + self.pix_pos.x),
-                                int(self.direction.y*self.app.cell_height+self.app.cell_height//2+TOP_BOTTOM_BUFFER//2 + self.pix_pos.y)), self.radius, 1)
+                           (int(self.next_cell.x*self.app.cell_width+self.app.cell_width//2+TOP_BOTTOM_BUFFER//2),
+                                int(self.next_cell.y*self.app.cell_height+self.app.cell_height//2+TOP_BOTTOM_BUFFER//2 )), self.radius, 1)
+        # direction line
+        pygame.draw.line(self.app.screen, self.colour, self.pix_pos, self.pix_pos + self.direction)
         pygame.draw.circle(self.app.screen, self.colour,
                            (int(self.pix_pos.x), int(self.pix_pos.y)), self.radius)
 
@@ -63,7 +66,8 @@ class Enemy:
             else:
                 return vec(COLS-2, ROWS-2)
 
-    def time_to_move(self):
+    def can_change_direction(self):
+
         if int(self.pix_pos.x+TOP_BOTTOM_BUFFER//2) % self.app.cell_width == 0:
             if self.direction == vec(1, 0) or self.direction == vec(-1, 0) or self.direction == vec(0, 0):
                 return True
@@ -72,37 +76,36 @@ class Enemy:
                 return True
         return False
 
-    def move(self):
-        #check if in pen
+    def pick_direction(self):
         if(self.grid_pos in self.app.pen):
-            return self.Euclidian(self.grid_pos, self.app.pen_exit_target, self.direction if self.direction != vec(0, 0) else vec(1, 0), self.app.pen_walls)
-        
-        if self.personality == "random":
-            self.direction = self.get_random_direction()
-        if self.personality == "slow":
-            self.direction = self.get_path_direction(self.target)
-        if self.personality == "speedy":
-            self.direction = self.get_path_direction(self.target)
-        if self.personality == "scared":
-            self.direction = self.get_path_direction(self.target)
+            self.next_cell = self.Euclidian(self.grid_pos, self.app.pen_exit_target, self.direction, self.app.pen_walls)
+        elif self.personality == "random":
+            self.next_cell = self.get_random_direction()
+        elif self.personality == "slow":
+            self.next_cell = self.Euclidian(self.grid_pos, self.target, self.direction, self.app.walls)
+        elif self.personality == "speedy":
+            self.next_cell = self.Euclidian(self.grid_pos, self.target, self.direction, self.app.walls)
+        elif self.personality == "scared":
+            self.next_cell = self.Euclidian(self.grid_pos, self.target, self.direction, self.app.walls)
 
-    def get_path_direction(self, target):
-        next_cell = self.find_next_cell_in_path(target)
-        xdir = next_cell[0] - self.grid_pos[0]
-        ydir = next_cell[1] - self.grid_pos[1]
-        return vec(xdir, ydir)
+        self.direction = (self.next_cell - self.grid_pos).normalize()
 
-    def find_next_cell_in_path(self, target):
-        return self.Euclidian(self.grid_pos, target, self.direction if self.direction != vec(0, 0) else vec(1, 0), self.app.walls)
-        #return self.BFS([int(self.grid_pos.x), int(self.grid_pos.y)], [int(target[0]), int(target[1])])
+    def find_next_cell_in_path(self, target, method):
+        return method(self.grid_pos, target, self.direction if self.direction != vec(0, 0) else vec(1, 0), self.app.walls)
 
     def Euclidian(self, start, target, direction, walls):
-        possibleTiles = [direction + start, direction.rotate(90) + start, direction.rotate(-90) + start]
-        return min(filter(lambda t : not walls.__contains__(t), possibleTiles), key=lambda t : t.distance_to(target))
+        if direction == vec(0,0):
+            possibleTiles = [start + vec(1,0), start + vec(0,1), start + vec(-1,0), start + vec(0, -1)]
+        else:
+            possibleTiles = [direction + start, vec(direction.y, direction.x) + start, vec(-direction.y, -direction.x) + start]
+        possibleTiles = list(filter(lambda t : not walls.__contains__(t), possibleTiles))
+        if len(possibleTiles) == 0:
+            filter(lambda t : not walls.__contains__(t), [start + direction*-1])
+        return min(possibleTiles, key=lambda t : t.distance_to(target), default=vec(12, 12))
 
-    def BFS(self, start, target):
+    def BFS(self, start, target, direction, walls):
         grid = [[0 for x in range(28)] for x in range(30)]
-        for cell in self.app.walls:
+        for cell in walls:
             if cell.x < 28 and cell.y < 30:
                 grid[int(cell.y)][int(cell.x)] = 1
         queue = [start]
@@ -133,20 +136,11 @@ class Enemy:
         return shortest
 
     def get_random_direction(self):
-        while True:
-            number = random.randint(-2, 1)
-            if number == -2:
-                x_dir, y_dir = 1, 0
-            elif number == -1:
-                x_dir, y_dir = 0, 1
-            elif number == 0:
-                x_dir, y_dir = -1, 0
-            else:
-                x_dir, y_dir = 0, -1
-            next_pos = vec(self.grid_pos.x + x_dir, self.grid_pos.y + y_dir)
-            if next_pos not in self.app.walls:
-                break
-        return vec(x_dir, y_dir)
+        possibleTiles = list(filter(lambda t : t not in self.app.walls, [self.grid_pos + vec(1,0), self.grid_pos + vec(0,1), self.grid_pos + vec(-1, 0), self.grid_pos + vec(0, -1)]))
+        if len(possibleTiles) != 0:
+            return possibleTiles[random.randint(0, len(possibleTiles) - 1)]
+
+        return vec(0, 0)
 
     def get_pix_pos(self):
         return vec((self.grid_pos.x*self.app.cell_width)+TOP_BOTTOM_BUFFER//2+self.app.cell_width//2,
