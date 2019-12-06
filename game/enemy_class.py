@@ -20,7 +20,6 @@ class Enemy:
         self.speed = self.set_speed()
 
     def update(self, dt):
-        print('set target')
         self.target = self.set_target() 
         if self.target != self.grid_pos:
             if self.can_change_direction():
