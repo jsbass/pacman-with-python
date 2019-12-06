@@ -8,8 +8,17 @@
             "name": "Start From Beginning",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/startFromBeginning.py",
-            "console": "integratedTerminal"
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "args": []
+        },
+        {
+            "name": "Continue Running",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/continueRunning.py",
+            "console": "integratedTerminal",
+            "args": ["--continue"]
         }
     ]
 }

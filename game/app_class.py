@@ -120,7 +120,7 @@ class App:
 
     def reset(self):
         self.time = 0
-        self.player.lives = 3
+        self.player.lives = 1
         self.player.current_score = 0
         self.player.grid_pos = vec(self.player.starting_pos)
         self.player.pix_pos = self.player.get_pix_pos()
@@ -172,6 +172,9 @@ class App:
             coin = self.coins.pop(index)
             self.player.current_score += 1
             self.gameStateArray[coin[0]] = 0
+
+        if(len(self.coins) == 0):
+            self.running = False
 
         for i, enemy in enumerate(self.enemies):
             enemy.update(dt)

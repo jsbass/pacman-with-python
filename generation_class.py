@@ -3,42 +3,37 @@ import numpy
 import math
 import random
 import copy
-individual_count = 24
+
 class Generation:
-    def __init__(self, individuals):
+    def __init__(self, individuals, numOfTopIndividuals = None):
         self.individuals = individuals
+        self.numOfTopIndividuals = numOfTopIndividuals if numOfTopIndividuals != None else len(individuals)//4
 
     @staticmethod
-    def generateWithRandomIndividuals():
+    def generateWithRandomIndividuals(num, numTopIndividuals = None):
         individuals = []
-        for i in range(24):
+        for i in range(num):
             individuals.append(Individual([
                 numpy.multiply(numpy.add(numpy.random.rand(297,8), -0.5), 20), #random matrix between -10 and 10
                 numpy.multiply(numpy.add(numpy.random.rand(8,8), -0.5), 20), #random matrix between -10 and 10
                 numpy.multiply(numpy.add(numpy.random.rand(8,4), -0.5), 20) #random matrix between -10 and 10
             ]))
 
-        return Generation(individuals)
+        return Generation(individuals, numTopIndividuals)
 
     def generateNext(self):
-        sortedIndividuals = sorted(self.individuals, key=lambda i : i.getScore())
+        sortedIndividuals = sorted(copy.deepcopy(self.individuals), key=lambda i : i.getScore())
         newIndividuals = []
         # 4/24 added
-        newIndividuals.append(sortedIndividuals[0])
-        newIndividuals.append(sortedIndividuals[1])
-        newIndividuals.append(sortedIndividuals[2])
-        newIndividuals.append(sortedIndividuals[3])
-
-        # 8/24 added
-        newIndividuals.append(self.breed([sortedIndividuals[0], sortedIndividuals[1]]))
-        newIndividuals.append(self.breed([sortedIndividuals[1], sortedIndividuals[2]]))
-        newIndividuals.append(self.breed([sortedIndividuals[2], sortedIndividuals[3]]))
-        newIndividuals.append(self.breed([sortedIndividuals[3], sortedIndividuals[4]]))
-
-        for i in range(16):
-            newIndividuals.append(copy.deepcopy(self.individuals[random.randint(4, 23)]).mutate())
+        for i in range(self.numOfTopIndividuals):
+            newIndividuals.append(sortedIndividuals[i].mutate(0, .1*i))
         
-        return Generation(newIndividuals)
+        i = 0
+        while len(newIndividuals) < len(self.individuals):
+            newIndividuals.append(self.breed([self.individuals[i], self.individuals[i+1]]).mutate(0, .05*i)) # get more wild as we go
+            i += 1
+        
+        return Generation(newIndividuals, self.numOfTopIndividuals)
 
     def breed(self, individuals):
         if len(individuals) == 0:
@@ -47,24 +42,49 @@ class Generation:
         # lazy but should check each individual has matching layers
         layers = [[]]*len(individuals[0].layers)
         for i in range(len(individuals[0].layers)):
-            layers[i] = [[]]*len(individuals[0].layers[i])
-            for x in range(len(individuals[0].layers[i])):
-                layers[i][x] = [[]]*len(individuals[0].layers[i][x])
-                for y in range(len(individuals[0].layers[i][x])):
-                    layers[i][x][y] = individuals[random.randint(1, len(individuals)) - 1].layers[i][x][y]
+            layers[i] = numpy.empty(individuals[0].layers[i].shape)
+            for x in range(individuals[0].layers[i].shape[0]):
+                for y in range(individuals[0].layers[i].shape[1]):
+                    layers[i][x][y] = individuals[random.randint(1, len(individuals)) - 1].layers[i].item((x,y))
 
         return Individual(layers)
     
     def __str__(self):
-        maxScore = 0
+        minScore = None
+        maxScore = None
         sumScores = 0
+
+        minCalcScore = None
+        maxCalcScore = None
+        sumCalcScores = 0
+
+        minTime = None
+        maxTime = None
+        sumTime = 0
+
         for i in self.individuals:
             score = i.getScore()
-            if score > maxScore:
-                maxScore = score
-            sumScores += score
+            if maxCalcScore == None or score > maxCalcScore:
+                maxCalcScore = score
+            if minCalcScore == None or score < minCalcScore:
+                minCalcScore = score
+            sumCalcScores += score
+
+            if maxScore == None or i.gameScore > maxScore:
+                maxScore = i.gameScore
+            if minScore == None or i.gameScore < minScore:
+                minScore = i.gameScore
+            sumScores += i.gameScore
+
+            if maxTime == None or i.gameTime > maxTime:
+                maxTime = i.gameTime
+            if minTime == None or i.gameTime < minTime:
+                minTime = i.gameTime
+            sumTime += i.gameTime
         
-        string = ''
-        string += str(maxScore) + ','
-        string += str(sumScores / len(self.individuals))
-        return string
+        items = [
+            minScore, maxScore, sumScores / len(self.individuals),
+            minTime, maxTime, sumTime / len(self.individuals),
+            minCalcScore, maxCalcScore, sumCalcScores / len(self.individuals)
+        ]
+        return ','.join(map(str, items))

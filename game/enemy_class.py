@@ -18,6 +18,7 @@ class Enemy:
         self.personality = self.set_personality()
         self.target = None
         self.speed = self.set_speed()
+        self.decision_history = []
 
     def update(self, dt):
         self.target = self.set_target() 
@@ -87,12 +88,16 @@ class Enemy:
         elif self.personality == "scared":
             self.next_cell = self.Euclidian(self.grid_pos, self.target, self.direction, self.app.walls)
 
-        self.direction = (self.next_cell - self.grid_pos).normalize()
+        self.direction = (self.next_cell - self.grid_pos)
+        if self.direction != vec(0,0):
+            self.direction.normalize_ip()
 
     def find_next_cell_in_path(self, target, method):
         return method(self.grid_pos, target, self.direction if self.direction != vec(0, 0) else vec(1, 0), self.app.walls)
 
     def Euclidian(self, start, target, direction, walls):
+        if(target == start):
+            return start
         if direction == vec(0,0):
             possibleTiles = [start + vec(1,0), start + vec(0,1), start + vec(-1,0), start + vec(0, -1)]
         else:
@@ -100,7 +105,8 @@ class Enemy:
         possibleTiles = list(filter(lambda t : not walls.__contains__(t), possibleTiles))
         if len(possibleTiles) == 0:
             filter(lambda t : not walls.__contains__(t), [start + direction*-1])
-        return min(possibleTiles, key=lambda t : t.distance_to(target), default=vec(12, 12))
+        
+        return min(possibleTiles, key=lambda t : t.distance_to(target), default=start)
 
     def BFS(self, start, target, direction, walls):
         grid = [[0 for x in range(28)] for x in range(30)]
@@ -135,11 +141,18 @@ class Enemy:
         return shortest
 
     def get_random_direction(self):
-        possibleTiles = list(filter(lambda t : t not in self.app.walls, [self.grid_pos + vec(1,0), self.grid_pos + vec(0,1), self.grid_pos + vec(-1, 0), self.grid_pos + vec(0, -1)]))
-        if len(possibleTiles) != 0:
-            return possibleTiles[random.randint(0, len(possibleTiles) - 1)]
+        if self.direction == vec(0,0):
+            possibleTiles = [self.grid_pos + vec(1,0), self.grid_pos + vec(0,1), self.grid_pos + vec(-1,0), self.grid_pos + vec(0, -1)]
+        else:
+            possibleTiles = [self.direction + self.grid_pos, vec(self.direction.y, self.direction.x) + self.grid_pos, vec(-self.direction.y, self.direction.x) + self.grid_pos]
+        possibleTiles = list(filter(lambda t : not self.app.walls.__contains__(t), possibleTiles))
+        if len(possibleTiles) == 0:
+            filter(lambda t : not self.app.walls.__contains__(t), [self.grid_pos + self.direction*-1])
 
-        return vec(0, 0)
+        if len(possibleTiles) == 0:
+            return self.grid_pos
+        
+        return possibleTiles[random.randint(0, len(possibleTiles) - 1 )]
 
     def get_pix_pos(self):
         return vec((self.grid_pos.x*self.app.cell_width)+TOP_BOTTOM_BUFFER//2+self.app.cell_width//2,
